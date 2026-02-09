@@ -86,9 +86,12 @@ add_action( 'elementor/elements/categories_registered', 'skyyrose_add_elementor_
  * @since 1.0.0
  */
 function skyyrose_elementor_editor_styles() {
+	// Use minified assets in production.
+	$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+
 	wp_enqueue_style(
 		'skyyrose-elementor-editor',
-		SKYYROSE_ASSETS_URI . '/css/elementor-editor.css',
+		SKYYROSE_ASSETS_URI . '/css/elementor-editor' . $suffix . '.css',
 		array(),
 		SKYYROSE_VERSION
 	);
@@ -101,9 +104,12 @@ add_action( 'elementor/editor/after_enqueue_styles', 'skyyrose_elementor_editor_
  * @since 1.0.0
  */
 function skyyrose_elementor_frontend_scripts() {
+	// Use minified assets in production.
+	$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+
 	wp_enqueue_script(
 		'skyyrose-elementor',
-		SKYYROSE_ASSETS_URI . '/js/elementor-frontend.js',
+		SKYYROSE_ASSETS_URI . '/js/elementor-frontend' . $suffix . '.js',
 		array( 'jquery', 'elementor-frontend' ),
 		SKYYROSE_VERSION,
 		true

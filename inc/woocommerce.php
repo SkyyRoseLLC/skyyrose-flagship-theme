@@ -37,16 +37,19 @@ add_action( 'after_setup_theme', 'skyyrose_woocommerce_support' );
  * @since 1.0.0
  */
 function skyyrose_woocommerce_scripts() {
+	// Use minified assets in production.
+	$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+
 	wp_enqueue_style(
 		'skyyrose-woocommerce',
-		SKYYROSE_ASSETS_URI . '/css/woocommerce.css',
+		SKYYROSE_ASSETS_URI . '/css/woocommerce' . $suffix . '.css',
 		array(),
 		SKYYROSE_VERSION
 	);
 
 	wp_enqueue_script(
 		'skyyrose-woocommerce',
-		SKYYROSE_ASSETS_URI . '/js/woocommerce.js',
+		SKYYROSE_ASSETS_URI . '/js/woocommerce' . $suffix . '.js',
 		array( 'jquery', 'wc-add-to-cart' ),
 		SKYYROSE_VERSION,
 		true

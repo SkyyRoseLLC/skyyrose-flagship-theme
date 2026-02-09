@@ -67,9 +67,12 @@ function skyyrose_customize_partial_blogdescription() {
  * @since 1.0.0
  */
 function skyyrose_customize_preview_js() {
+	// Use minified assets in production.
+	$suffix = ( defined( 'SCRIPT_DEBUG' ) && SCRIPT_DEBUG ) ? '' : '.min';
+
 	wp_enqueue_script(
 		'skyyrose-customizer',
-		SKYYROSE_ASSETS_URI . '/js/customizer.js',
+		SKYYROSE_ASSETS_URI . '/js/customizer' . $suffix . '.js',
 		array( 'customize-preview' ),
 		SKYYROSE_VERSION,
 		true

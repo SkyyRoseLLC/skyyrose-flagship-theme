@@ -402,14 +402,39 @@ add_action( 'wp_ajax_nopriv_skyyrose_move_all_to_cart', 'skyyrose_ajax_move_all_
  * @since 1.0.0
  */
 function skyyrose_register_wishlist_rest_routes() {
-	// Permission callback using nonce verification for security.
-	$permission_callback = function() {
-		// Allow GET requests without authentication (for public wishlist viewing).
-		if ( 'GET' === $_SERVER['REQUEST_METHOD'] ) {
-			return true;
+	/**
+	 * Permission callback for GET requests (viewing wishlist).
+	 * Requires user to be logged in.
+	 *
+	 * @return bool|WP_Error True if user is logged in, WP_Error otherwise.
+	 */
+	$get_permission_callback = function() {
+		if ( ! is_user_logged_in() ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You must be logged in to view your wishlist.', 'skyyrose' ),
+				array( 'status' => 401 )
+			);
 		}
-		// POST requests require nonce verification.
-		return isset( $_REQUEST['_wpnonce'] ) && wp_verify_nonce( $_REQUEST['_wpnonce'], 'skyyrose_wishlist_nonce' );
+		return true;
+	};
+
+	/**
+	 * Permission callback for POST requests (modifying wishlist).
+	 * Requires user to be logged in.
+	 * REST API nonce verification is handled automatically by WordPress.
+	 *
+	 * @return bool|WP_Error True if user is logged in, WP_Error otherwise.
+	 */
+	$post_permission_callback = function() {
+		if ( ! is_user_logged_in() ) {
+			return new WP_Error(
+				'rest_forbidden',
+				esc_html__( 'You must be logged in to modify your wishlist.', 'skyyrose' ),
+				array( 'status' => 401 )
+			);
+		}
+		return true;
 	};
 
 	// Get wishlist items.
@@ -419,7 +444,7 @@ function skyyrose_register_wishlist_rest_routes() {
 		array(
 			'methods'             => 'GET',
 			'callback'            => 'skyyrose_rest_get_wishlist',
-			'permission_callback' => $permission_callback,
+			'permission_callback' => $get_permission_callback,
 		)
 	);
 
@@ -430,7 +455,7 @@ function skyyrose_register_wishlist_rest_routes() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'skyyrose_rest_add_to_wishlist',
-			'permission_callback' => $permission_callback,
+			'permission_callback' => $post_permission_callback,
 			'args'                => array(
 				'product_id' => array(
 					'required'          => true,
@@ -450,7 +475,7 @@ function skyyrose_register_wishlist_rest_routes() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'skyyrose_rest_remove_from_wishlist',
-			'permission_callback' => $permission_callback,
+			'permission_callback' => $post_permission_callback,
 			'args'                => array(
 				'product_id' => array(
 					'required'          => true,
@@ -470,7 +495,7 @@ function skyyrose_register_wishlist_rest_routes() {
 		array(
 			'methods'             => 'POST',
 			'callback'            => 'skyyrose_rest_clear_wishlist',
-			'permission_callback' => $permission_callback,
+			'permission_callback' => $post_permission_callback,
 		)
 	);
 }
