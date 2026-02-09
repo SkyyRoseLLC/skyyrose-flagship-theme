@@ -211,7 +211,7 @@ function skyyrose_woocommerce_custom_fields() {
 add_action( 'woocommerce_single_product_summary', 'skyyrose_woocommerce_custom_fields', 25 );
 
 /**
- * Add custom product meta box for 3D models.
+ * Add custom product meta boxes for 3D models and scene positions.
  *
  * @since 1.0.0
  */
@@ -222,6 +222,15 @@ function skyyrose_add_product_meta_box() {
 		'skyyrose_product_3d_model_callback',
 		'product',
 		'side',
+		'default'
+	);
+
+	add_meta_box(
+		'skyyrose_3d_position',
+		esc_html__( '3D Scene Position', 'skyyrose-flagship' ),
+		'skyyrose_3d_position_callback',
+		'product',
+		'normal',
 		'default'
 	);
 }
@@ -290,6 +299,209 @@ function skyyrose_save_product_3d_model( $post_id ) {
 	}
 }
 add_action( 'save_post_product', 'skyyrose_save_product_3d_model' );
+
+/**
+ * Meta box callback for 3D scene position.
+ *
+ * @since 1.0.0
+ *
+ * @param WP_Post $post Current post object.
+ */
+function skyyrose_3d_position_callback( $post ) {
+	wp_nonce_field( 'skyyrose_3d_position_nonce', 'skyyrose_3d_position_nonce' );
+
+	$pos_x = get_post_meta( $post->ID, '_3d_position_x', true );
+	$pos_y = get_post_meta( $post->ID, '_3d_position_y', true );
+	$pos_z = get_post_meta( $post->ID, '_3d_position_z', true );
+	?>
+	<p class="description">
+		<?php esc_html_e( 'Set the position where this product appears in 3D collection scenes. Use decimal values (e.g., 2.5, -1.0, 0).', 'skyyrose-flagship' ); ?>
+	</p>
+	<p>
+		<label for="skyyrose_3d_position_x">
+			<strong><?php esc_html_e( 'X Position (Left/Right)', 'skyyrose-flagship' ); ?></strong>
+		</label>
+		<input
+			type="number"
+			step="0.1"
+			id="skyyrose_3d_position_x"
+			name="skyyrose_3d_position_x"
+			value="<?php echo esc_attr( $pos_x ); ?>"
+			style="width: 100%;"
+		/>
+	</p>
+	<p>
+		<label for="skyyrose_3d_position_y">
+			<strong><?php esc_html_e( 'Y Position (Up/Down)', 'skyyrose-flagship' ); ?></strong>
+		</label>
+		<input
+			type="number"
+			step="0.1"
+			id="skyyrose_3d_position_y"
+			name="skyyrose_3d_position_y"
+			value="<?php echo esc_attr( $pos_y ); ?>"
+			style="width: 100%;"
+		/>
+	</p>
+	<p>
+		<label for="skyyrose_3d_position_z">
+			<strong><?php esc_html_e( 'Z Position (Forward/Back)', 'skyyrose-flagship' ); ?></strong>
+		</label>
+		<input
+			type="number"
+			step="0.1"
+			id="skyyrose_3d_position_z"
+			name="skyyrose_3d_position_z"
+			value="<?php echo esc_attr( $pos_z ); ?>"
+			style="width: 100%;"
+		/>
+	</p>
+	<?php
+}
+
+/**
+ * Save 3D position meta box data.
+ *
+ * @since 1.0.0
+ *
+ * @param int $post_id Post ID.
+ */
+function skyyrose_save_3d_position( $post_id ) {
+	if ( ! isset( $_POST['skyyrose_3d_position_nonce'] ) ) {
+		return;
+	}
+
+	if ( ! wp_verify_nonce( $_POST['skyyrose_3d_position_nonce'], 'skyyrose_3d_position_nonce' ) ) {
+		return;
+	}
+
+	if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+		return;
+	}
+
+	if ( ! current_user_can( 'edit_post', $post_id ) ) {
+		return;
+	}
+
+	// Save X position.
+	if ( isset( $_POST['skyyrose_3d_position_x'] ) ) {
+		update_post_meta(
+			$post_id,
+			'_3d_position_x',
+			sanitize_text_field( $_POST['skyyrose_3d_position_x'] )
+		);
+	}
+
+	// Save Y position.
+	if ( isset( $_POST['skyyrose_3d_position_y'] ) ) {
+		update_post_meta(
+			$post_id,
+			'_3d_position_y',
+			sanitize_text_field( $_POST['skyyrose_3d_position_y'] )
+		);
+	}
+
+	// Save Z position.
+	if ( isset( $_POST['skyyrose_3d_position_z'] ) ) {
+		update_post_meta(
+			$post_id,
+			'_3d_position_z',
+			sanitize_text_field( $_POST['skyyrose_3d_position_z'] )
+		);
+	}
+}
+add_action( 'save_post_product', 'skyyrose_save_3d_position' );
+
+/**
+ * Register REST API endpoint for 3D product data.
+ * Context7 Query: /woocommerce/woocommerce-rest-api-docs - WooCommerce REST API endpoints
+ *
+ * @since 1.0.0
+ */
+function skyyrose_register_3d_product_endpoint() {
+	register_rest_route(
+		'skyyrose/v1',
+		'/products/3d/(?P<category>[\w-]+)',
+		array(
+			'methods'             => 'GET',
+			'callback'            => 'skyyrose_get_collection_products_3d',
+			'permission_callback' => '__return_true',
+			'args'                => array(
+				'category' => array(
+					'required'          => true,
+					'validate_callback' => function( $param ) {
+						return is_string( $param );
+					},
+				),
+			),
+		)
+	);
+}
+add_action( 'rest_api_init', 'skyyrose_register_3d_product_endpoint' );
+
+/**
+ * Get products with 3D position data for a specific category.
+ * Based on WooCommerce REST API patterns from Context7 documentation.
+ *
+ * @since 1.0.0
+ *
+ * @param WP_REST_Request $request REST API request object.
+ * @return WP_REST_Response|WP_Error Response object on success, or WP_Error object on failure.
+ */
+function skyyrose_get_collection_products_3d( $request ) {
+	$category_slug = sanitize_text_field( $request['category'] );
+
+	// Get products in the category.
+	$args = array(
+		'limit'    => 20,
+		'category' => array( $category_slug ),
+		'status'   => 'publish',
+	);
+
+	$products = wc_get_products( $args );
+
+	if ( empty( $products ) ) {
+		return new WP_Error(
+			'no_products',
+			esc_html__( 'No products found for this collection.', 'skyyrose-flagship' ),
+			array( 'status' => 404 )
+		);
+	}
+
+	$products_data = array();
+
+	foreach ( $products as $product ) {
+		$product_id    = $product->get_id();
+		$pos_x         = get_post_meta( $product_id, '_3d_position_x', true );
+		$pos_y         = get_post_meta( $product_id, '_3d_position_y', true );
+		$pos_z         = get_post_meta( $product_id, '_3d_position_z', true );
+		$model_file    = get_post_meta( $product_id, '_product_3d_model', true );
+
+		// Only include products that have 3D position data.
+		if ( $pos_x !== '' || $pos_y !== '' || $pos_z !== '' ) {
+			$products_data[] = array(
+				'id'          => $product_id,
+				'name'        => $product->get_name(),
+				'price'       => $product->get_price_html(),
+				'regular_price' => $product->get_regular_price(),
+				'sale_price'  => $product->get_sale_price(),
+				'image'       => wp_get_attachment_image_url( $product->get_image_id(), 'large' ),
+				'url'         => $product->get_permalink(),
+				'description' => $product->get_short_description(),
+				'sku'         => $product->get_sku(),
+				'stock_status' => $product->get_stock_status(),
+				'model_file'  => $model_file ? esc_url( $model_file ) : '',
+				'position'    => array(
+					'x' => $pos_x !== '' ? floatval( $pos_x ) : 0.0,
+					'y' => $pos_y !== '' ? floatval( $pos_y ) : 1.5,
+					'z' => $pos_z !== '' ? floatval( $pos_z ) : 0.0,
+				),
+			);
+		}
+	}
+
+	return new WP_REST_Response( $products_data, 200 );
+}
 
 /**
  * Custom product search form.

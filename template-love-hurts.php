@@ -52,10 +52,15 @@ get_header();
             </p>
         </div>
 
-        <!-- Audio Controls -->
-        <div class="audio-controls">
-            <button id="toggle-audio" class="audio-btn" aria-label="Toggle Music">
-                <span class="audio-icon">🔊</span>
+        <!-- Audio & Chandelier Controls -->
+        <div class="scene-controls">
+            <button id="toggle-audio" class="control-btn" aria-label="Toggle Music">
+                <span class="control-icon">🔊</span>
+                <span class="control-label">Music</span>
+            </button>
+            <button id="toggle-chandelier" class="control-btn" aria-label="Toggle Chandelier">
+                <span class="control-icon">💡</span>
+                <span class="control-label">Lights</span>
             </button>
         </div>
 
@@ -289,28 +294,45 @@ get_header();
     margin-right: 8px;
 }
 
-/* Audio Controls */
-.audio-controls {
+/* Scene Controls (Audio & Chandelier) */
+.scene-controls {
     position: absolute;
     top: 20px;
     right: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
 }
 
-.audio-btn {
-    background: rgba(10, 10, 10, 0.8);
+.control-btn {
+    background: rgba(10, 10, 10, 0.9);
+    backdrop-filter: blur(10px);
     border: 2px solid rgba(255, 215, 0, 0.5);
     color: #FFD700;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
+    padding: 12px 15px;
+    border-radius: 10px;
     cursor: pointer;
-    font-size: 1.5rem;
     transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 100px;
 }
 
-.audio-btn:hover {
+.control-icon {
+    font-size: 1.3rem;
+}
+
+.control-label {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.control-btn:hover,
+.control-btn:focus {
     box-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
-    transform: scale(1.1);
+    transform: translateX(-3px);
+    background: rgba(10, 10, 10, 1);
 }
 
 /* Easter Egg Tracker */
@@ -539,22 +561,32 @@ get_header();
 </style>
 
 <script type="module">
-import LoveHurtsScene from '<?php echo get_template_directory_uri(); ?>/assets/js/three/love-hurts-scene.js';
+import LoveHurtsScene from '<?php echo get_template_directory_uri(); ?>/assets/js/three/scenes/LoveHurtsScene.js';
 
 document.addEventListener('DOMContentLoaded', () => {
     const container = document.getElementById('love-hurts-scene-container');
     const loadingScreen = document.getElementById('loading-screen');
+    const progressBar = document.querySelector('.progress-bar');
 
-    // Initialize scene
+    // Initialize enhanced scene with physics and audio
     const scene = new LoveHurtsScene(container);
 
+    // Update loading progress
+    scene.onLoadProgress = (url, itemsLoaded, itemsTotal, progress) => {
+        if (progressBar) {
+            progressBar.style.width = `${progress}%`;
+        }
+    };
+
     // Hide loading screen after initialization
-    setTimeout(() => {
-        loadingScreen.classList.add('fade-out');
+    scene.onLoadComplete = () => {
         setTimeout(() => {
-            loadingScreen.style.display = 'none';
-        }, 500);
-    }, 3000);
+            loadingScreen.classList.add('fade-out');
+            setTimeout(() => {
+                loadingScreen.style.display = 'none';
+            }, 500);
+        }, 1000);
+    };
 
     // Navigation buttons
     document.querySelectorAll('.nav-btn').forEach(btn => {
@@ -566,8 +598,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Product hotspot click handler
     window.addEventListener('productHotspotClick', (e) => {
-        const { productId, productName } = e.detail;
-        openProductModal(productId, productName);
+        const { productId, productName, productPrice, productImage, productUrl } = e.detail;
+        openProductModal(productId, productName, productPrice, productImage, productUrl);
     });
 
     // Modal controls
@@ -578,42 +610,99 @@ document.addEventListener('DOMContentLoaded', () => {
     modalClose.addEventListener('click', closeProductModal);
     modalOverlay.addEventListener('click', closeProductModal);
 
-    function openProductModal(productId, productName) {
-        // Fetch product data via AJAX
-        fetch(`<?php echo admin_url('admin-ajax.php'); ?>?action=get_product_data&product_id=${productId}`)
-            .then(res => res.json())
-            .then(data => {
-                // Safely set text content
-                document.getElementById('product-title').textContent = data.title || productName;
-                document.getElementById('product-price').textContent = data.price || '';
-                document.getElementById('product-description').textContent = data.description || '';
+    // Keyboard accessibility
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && modal.style.display === 'block') {
+            closeProductModal();
+        }
+    });
 
-                // Safely create image element
-                const productImage = document.getElementById('product-image');
-                productImage.textContent = ''; // Clear previous content
-                if (data.image) {
-                    const img = document.createElement('img');
-                    img.src = data.image;
-                    img.alt = data.title || productName;
-                    productImage.appendChild(img);
-                }
+    function openProductModal(productId, productName, productPrice, productImage, productUrl) {
+        // Set modal content using textContent for security
+        document.getElementById('product-title').textContent = productName;
+        document.getElementById('product-price').textContent = productPrice;
 
-                modal.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Error loading product:', error);
-            });
+        // Set product image
+        const productImageContainer = document.getElementById('product-image');
+        productImageContainer.textContent = ''; // Clear previous content
+        if (productImage) {
+            const img = document.createElement('img');
+            img.src = productImage;
+            img.alt = productName;
+            productImageContainer.appendChild(img);
+        }
+
+        // Set view details link
+        const viewDetailsBtn = modal.querySelector('.btn-view-details');
+        if (viewDetailsBtn) {
+            viewDetailsBtn.href = productUrl;
+        }
+
+        // Set add to cart button
+        const addToCartBtn = document.getElementById('add-to-cart-btn');
+        if (addToCartBtn) {
+            addToCartBtn.dataset.productId = productId;
+        }
+
+        modal.style.display = 'block';
+
+        // Focus on close button for accessibility
+        setTimeout(() => modalClose.focus(), 100);
     }
 
     function closeProductModal() {
         modal.style.display = 'none';
     }
 
-    // Audio toggle (placeholder)
+    // Audio toggle - uses new scene method
     document.getElementById('toggle-audio').addEventListener('click', function() {
-        console.log('Audio toggle - implement audio manager');
-        this.querySelector('.audio-icon').textContent =
-            this.querySelector('.audio-icon').textContent === '🔊' ? '🔇' : '🔊';
+        scene.toggleAudio();
+        const icon = this.querySelector('.control-icon');
+        icon.textContent = scene.audioEnabled ? '🔊' : '🔇';
+    });
+
+    // Chandelier toggle - uses new scene method
+    document.getElementById('toggle-chandelier').addEventListener('click', function() {
+        scene.toggleChandelier();
+        const icon = this.querySelector('.control-icon');
+        icon.textContent = scene.chandelierLit ? '💡' : '🕯️';
+    });
+
+    // Add to cart functionality
+    const addToCartBtn = document.getElementById('add-to-cart-btn');
+    if (addToCartBtn) {
+        addToCartBtn.addEventListener('click', function() {
+            const productId = this.dataset.productId;
+
+            const formData = new FormData();
+            formData.append('action', 'woocommerce_add_to_cart');
+            formData.append('product_id', productId);
+            formData.append('quantity', 1);
+
+            fetch('<?php echo admin_url('admin-ajax.php'); ?>', {
+                method: 'POST',
+                body: formData
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Product added to cart!');
+                    closeProductModal();
+                    document.dispatchEvent(new Event('wc-fragments-refresh'));
+                } else {
+                    alert('Error adding to cart. Please try again.');
+                }
+            })
+            .catch(error => {
+                console.error('Add to cart error:', error);
+                alert('Error adding to cart. Please try again.');
+            });
+        });
+    }
+
+    // Cleanup on page unload
+    window.addEventListener('beforeunload', () => {
+        scene.dispose();
     });
 });
 </script>
