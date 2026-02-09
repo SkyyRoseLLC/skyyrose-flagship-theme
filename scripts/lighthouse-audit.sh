@@ -25,7 +25,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-BASE_URL="${1:-http://skyyrose.local}"
+BASE_URL="${1:-http://skyyroselocal.local}"
 OUTPUT_DIR="tests/lighthouse"
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
 
